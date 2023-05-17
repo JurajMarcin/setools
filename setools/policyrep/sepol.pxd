@@ -309,7 +309,7 @@ cdef extern from "<sepol/policydb/conditional.h>":
 
     cdef struct cond_expr:
         uint32_t expr_type
-        uint32_t bool
+        uint32_t boolean
         cond_expr *next
 
     ctypedef cond_expr cond_expr_t
