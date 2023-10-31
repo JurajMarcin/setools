@@ -471,11 +471,13 @@ cdef class FileNameTERule(BaseTERule):
     cdef:
         Type dft
         readonly str filename
+        uint32_t match_type
 
     @staticmethod
     cdef inline FileNameTERule factory(SELinuxPolicy policy,
                                        sepol.filename_trans_key_t *key,
-                                       Type stype, size_t otype):
+                                       Type stype, uint32_t match_type,
+                                       size_t otype):
         """Factory function for creating FileNameTERule objects."""
         cdef FileNameTERule r = FileNameTERule.__new__(FileNameTERule)
         r.policy = policy
@@ -486,12 +488,13 @@ cdef class FileNameTERule(BaseTERule):
         r.tclass = ObjClass.factory(policy, policy.class_value_to_datum(key.tclass - 1))
         r.dft = Type.factory(policy, policy.type_value_to_datum(otype - 1))
         r.filename = intern(key.name)
+        r.match_type = match_type
         r.origin = None
         return r
 
     def __hash__(self):
         return hash(
-            f"{self.ruletype}|{self.source}|{self.target}|{self.tclass}|{self.filename}|None|None")
+            f"{self.ruletype}|{self.source}|{self.target}|{self.tclass}|{self.filename}|{self.match_type}|None|None")
 
     def __lt__(self, other):
         return str(self) < str(other)
@@ -520,6 +523,7 @@ cdef class FileNameTERule(BaseTERule):
                 r.tclass = self.tclass
                 r.dft = self.dft
                 r.filename = self.filename
+                r.match_type = self.match_type
                 r.origin = None
                 r._conditional = self._conditional
                 r._conditional_block = self._conditional_block
@@ -531,7 +535,15 @@ cdef class FileNameTERule(BaseTERule):
             yield self
 
     def statement(self):
-        return f"{self.ruletype} {self.source} {self.target}:{self.tclass} {self.default} {self.filename};"
+        if self.match_type == sepol.FILENAME_TRANS_MATCH_EXACT:
+            match_str = ""
+        elif self.match_type == sepol.FILENAME_TRANS_MATCH_PREFIX:
+            match_str = " prefix"
+        elif self.match_type == sepol.FILENAME_TRANS_MATCH_SUFFIX:
+            match_str = " suffix"
+        else:
+            raise ValueError("Invalid filename trans match type")
+        return f"{self.ruletype} {self.source} {self.target}:{self.tclass} {self.default} {self.filename}{match_str};"
 
 
 #
@@ -714,13 +726,15 @@ cdef class FileNameTERuleIterator(HashtabIterator):
     cdef:
         sepol.filename_trans_datum_t *datum
         TypeEbitmapIterator stypei
+        uint32_t match_type
 
     @staticmethod
-    cdef factory(SELinuxPolicy policy, sepol.hashtab_t *table):
+    cdef factory(SELinuxPolicy policy, sepol.hashtab_t *table, uint32_t match_type):
         """Factory function for creating FileNameTERule iterators."""
         i = FileNameTERuleIterator()
         i.policy = policy
         i.table = table
+        i.match_type = match_type
         i.reset()
         return i
 
@@ -742,10 +756,10 @@ cdef class FileNameTERuleIterator(HashtabIterator):
         stype = self._next_stype()
         return FileNameTERule.factory(self.policy,
                                       <sepol.filename_trans_key_t *>self.curr.key,
-                                      stype, self.datum.otype)
+                                      stype, self.match_type, self.datum.otype)
 
     def __len__(self):
-        return sum(1 for r in FileNameTERuleIterator.factory(self.policy, self.table))
+        return sum(1 for r in FileNameTERuleIterator.factory(self.policy, self.table, self.match_type))
 
     def reset(self):
         super().reset()
