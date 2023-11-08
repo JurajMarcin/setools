@@ -536,14 +536,14 @@ cdef class FileNameTERule(BaseTERule):
 
     def statement(self):
         if self.match_type == sepol.FILENAME_TRANS_MATCH_EXACT:
-            match_str = ""
+            match_type_str = ""
         elif self.match_type == sepol.FILENAME_TRANS_MATCH_PREFIX:
-            match_str = " prefix"
+            match_type_str = " prefix"
         elif self.match_type == sepol.FILENAME_TRANS_MATCH_SUFFIX:
-            match_str = " suffix"
+            match_type_str = " suffix"
         else:
             raise ValueError("Invalid filename trans match type")
-        return f"{self.ruletype} {self.source} {self.target}:{self.tclass} {self.default} {self.filename}{match_str};"
+        return f"{self.ruletype} {self.source} {self.target}:{self.tclass} {self.default} {self.filename}{match_type_str};"
 
 
 #
