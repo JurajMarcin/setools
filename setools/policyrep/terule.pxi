@@ -464,6 +464,15 @@ cdef class TERule(BaseTERule):
         return self.rule_string
 
 
+class FileNameTERuleMatchType(PolicyEnum):
+
+    """Enumeration of name match type of FileName TE rules."""
+
+    exact = sepol.FILENAME_TRANS_MATCH_EXACT
+    prefix = sepol.FILENAME_TRANS_MATCH_PREFIX
+    suffix = sepol.FILENAME_TRANS_MATCH_SUFFIX
+
+
 cdef class FileNameTERule(BaseTERule):
 
     """A type_transition type enforcement rule with filename."""
@@ -471,7 +480,7 @@ cdef class FileNameTERule(BaseTERule):
     cdef:
         Type dft
         readonly str filename
-        uint32_t match_type
+        readonly object match_type
 
     @staticmethod
     cdef inline FileNameTERule factory(SELinuxPolicy policy,
@@ -488,7 +497,7 @@ cdef class FileNameTERule(BaseTERule):
         r.tclass = ObjClass.factory(policy, policy.class_value_to_datum(key.tclass - 1))
         r.dft = Type.factory(policy, policy.type_value_to_datum(otype - 1))
         r.filename = intern(key.name)
-        r.match_type = match_type
+        r.match_type = FileNameTERuleMatchType(match_type)
         r.origin = None
         return r
 
@@ -535,11 +544,11 @@ cdef class FileNameTERule(BaseTERule):
             yield self
 
     def statement(self):
-        if self.match_type == sepol.FILENAME_TRANS_MATCH_EXACT:
+        if self.match_type == FileNameTERuleMatchType.exact:
             match_type_str = ""
-        elif self.match_type == sepol.FILENAME_TRANS_MATCH_PREFIX:
+        elif self.match_type == FileNameTERuleMatchType.prefix:
             match_type_str = " prefix"
-        elif self.match_type == sepol.FILENAME_TRANS_MATCH_SUFFIX:
+        elif self.match_type == FileNameTERuleMatchType.suffix:
             match_type_str = " suffix"
         else:
             raise ValueError("Invalid filename trans match type")
